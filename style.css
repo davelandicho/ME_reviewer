@@ -349,6 +349,15 @@ button { font: inherit; }
 .my-item .meta { font-size: .82rem; color: var(--muted); }
 .my-item .acts { display: flex; gap: 6px; flex: none; }
 
+/* PDF upload preview */
+input[type=file] { padding: 8px; }
+.preview { margin: 4px 0 0; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; }
+.preview summary { cursor: pointer; font-weight: 700; }
+.preview ol { margin: 10px 0 0; padding-left: 22px; max-height: 320px; overflow: auto; font-size: .9rem; }
+.preview li { margin-bottom: 8px; }
+.preview .ans { color: var(--good); font-weight: 600; }
+.preview .dup { color: var(--muted); text-decoration: line-through; }
+
 code { font-size: .9em; padding: 1px 4px; background: var(--surface-2); border-radius: 4px; }
 
 footer { padding: 16px 0 24px; font-size: .8rem; color: var(--muted); text-align: center; }

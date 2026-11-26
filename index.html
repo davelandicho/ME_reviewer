@@ -70,9 +70,48 @@
   <!-- ---------- Question manager ---------- -->
   <section id="manage" class="panel hidden">
     <div class="panel-head">
-      <h2>Add a question</h2>
+      <h2>Manage questions</h2>
       <button id="closeManage" class="link">Back</button>
     </div>
+
+    <h3>Upload a reviewer (PDF)</h3>
+    <p class="small">Works with PDFs laid out like “MD Refresher”: numbered questions, choices A–D, and an “Answer: B. … | Keyword: …” line under each one.</p>
+    <div class="row">
+      <div class="field">
+        <label for="upSubject">Subject</label>
+        <select id="upSubject"></select>
+      </div>
+      <div class="field narrow">
+        <label for="upSet">Set</label>
+        <input id="upSet" type="number" min="1" max="99" value="1">
+      </div>
+    </div>
+    <div class="field">
+      <label for="upFile">PDF file</label>
+      <input id="upFile" type="file" accept="application/pdf,.pdf">
+    </div>
+    <p id="upMsg" class="small"></p>
+    <div id="upReview" class="hidden">
+      <details class="preview">
+        <summary id="upSummary"></summary>
+        <ol id="upPreview"></ol>
+      </details>
+      <div class="row">
+        <div class="field">
+          <label for="upPin">Upload PIN</label>
+          <input id="upPin" type="password" autocomplete="off" placeholder="Needed to publish for everyone">
+        </div>
+      </div>
+      <div class="actions">
+        <button id="upPublish" class="btn primary">Publish for everyone</button>
+        <button id="upLocal" class="btn">Save in this browser only</button>
+      </div>
+    </div>
+
+    <h3>Uploaded sets</h3>
+    <div id="upList" class="my-list"></div>
+
+    <h3>Add one question</h3>
     <p class="small">Saved in this browser only, and added to the game right away.</p>
 
     <form id="qForm">
@@ -180,6 +219,7 @@
 <script src="questions-math.js"></script>
 <script src="questions-powerplant.js"></script>
 <script src="questions-pipe.js"></script>
+<script src="pdf-import.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

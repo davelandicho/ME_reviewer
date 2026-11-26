@@ -118,8 +118,16 @@ function renderSubjectTabs() {
     `<span class="count">${allQuestions(s.key).length}</span></button>`).join('');
 }
 
+// Sets uploaded from the website (shared with everyone, loaded from /api/sets)
+let uploaded = [];
+
+function uploadedQuestions(sub) {
+  return uploaded.filter(s => s.subject === sub)
+    .flatMap(s => s.questions.map(q => ({ ...q, set: s.set, uploadId: s.id })));
+}
+
 function allQuestions(sub = $('subject').value) {
-  return (BANKS[sub] || []).concat(custom.filter(q => q.subject === sub));
+  return (BANKS[sub] || []).concat(uploadedQuestions(sub), custom.filter(q => q.subject === sub));
 }
 
 function setupSets() {
@@ -385,7 +393,9 @@ function resetForm() {
 }
 
 $('openManage').onclick = () => {
-  $('fSubject').value = $('exSubject').value = $('subject').value;
+  $('fSubject').value = $('exSubject').value = $('upSubject').value = $('subject').value;
+  suggestSetNumber();
+  renderUploadedList();
   $('setup').classList.add('hidden');
   $('manage').classList.remove('hidden');
   renderMyList();
@@ -496,7 +506,7 @@ $('importFile').onchange = async () => {
 };
 
 const subjectOptions = SUBJECTS.map(s => `<option value="${s.key}">${s.name}</option>`).join('');
-['subject', 'fSubject', 'exSubject'].forEach(id => { $(id).innerHTML = subjectOptions; });
+['subject', 'fSubject', 'exSubject', 'upSubject'].forEach(id => { $(id).innerHTML = subjectOptions; });
 try {
   const saved = localStorage.getItem('mdReviewerSubject');
   if (SUBJECTS.some(s => s.key === saved)) $('subject').value = saved;
@@ -590,5 +600,137 @@ $('closeBoard').onclick = () => {
 
 try { $('playerName').value = localStorage.getItem(NAME_KEY) || ''; } catch (e) {}
 
+/* ---------- PDF reviewer upload ---------- */
+const SETS_API = '/api/sets';
+let parsed = null; // { title, questions, dupes:Set<index> }
+
+async function loadUploadedSets() {
+  try {
+    const r = await fetch(SETS_API);
+    if (!r.ok) return;
+    uploaded = (await r.json()).sets || [];
+    setupSets();
+    if (!$('manage').classList.contains('hidden')) renderUploadedList();
+  } catch (e) { /* offline or not on Netlify */ }
+}
+
+function suggestSetNumber() {
+  const all = allQuestions($('upSubject').value);
+  $('upSet').value = all.length ? Math.max(...all.map(q => q.set || 1)) + 1 : 1;
+}
+
+function renderUploadedList() {
+  $('upList').innerHTML = uploaded.length ? uploaded.map(s => `
+    <div class="my-item">
+      <div>
+        <div>${escapeHtml(s.title || 'Untitled set')}</div>
+        <div class="meta">${subjectOf(s.subject).name} · Set ${s.set} · ${s.questions.length} questions</div>
+      </div>
+      <div class="acts"><button class="btn small danger" data-delset="${s.id}">Delete</button></div>
+    </div>`).join('') : '<p class="small">None yet.</p>';
+}
+
+function markDuplicates() {
+  if (!parsed) return;
+  const have = new Set(allQuestions($('upSubject').value).map(q => norm(q.q)));
+  parsed.dupes = new Set(parsed.questions.map((q, i) => have.has(norm(q.q)) ? i : -1).filter(i => i >= 0));
+  const fresh = parsed.questions.length - parsed.dupes.size;
+  $('upSummary').textContent = `Found ${parsed.questions.length} questions` +
+    (parsed.dupes.size ? ` · ${parsed.dupes.size} already exist and will be skipped` : '') + ' (tap to check)';
+  $('upPreview').innerHTML = parsed.questions.map((q, i) => `
+    <li value="${q.num}" class="${parsed.dupes.has(i) ? 'dup' : ''}">${escapeHtml(q.q)}<br>
+      <span class="ans">${'ABCD'[q.correct]}. ${escapeHtml(q.choices[q.correct])}</span></li>`).join('');
+  $('upPublish').disabled = $('upLocal').disabled = fresh === 0;
+}
+
+function freshQuestions() {
+  return parsed.questions.filter((_, i) => !parsed.dupes.has(i))
+    .map(({ q, choices, correct, keyword }) => ({ q, choices, correct, keyword }));
+}
+
+function resetUpload(msg) {
+  parsed = null;
+  $('upFile').value = '';
+  $('upReview').classList.add('hidden');
+  $('upMsg').textContent = msg || '';
+  suggestSetNumber();
+}
+
+$('upSubject').onchange = () => { suggestSetNumber(); markDuplicates(); };
+
+$('upFile').onchange = async () => {
+  const file = $('upFile').files[0];
+  $('upReview').classList.add('hidden');
+  parsed = null;
+  if (!file) return;
+  $('upMsg').textContent = 'Reading PDF…';
+  try {
+    const { questions, warnings } = await ReviewerPdf.parseFile(file);
+    if (!questions.length) {
+      $('upMsg').textContent = 'No questions found. The PDF must have selectable text (not a scanned image) and an “Answer:” line per question.';
+      return;
+    }
+    parsed = { title: file.name.replace(/\.pdf$/i, '').replace(/\s*\(\d+\)$/, ''), questions };
+    $('upMsg').textContent = warnings.length
+      ? `Skipped ${warnings.length}: ${warnings.slice(0, 5).join('; ')}${warnings.length > 5 ? '…' : ''}`
+      : '';
+    markDuplicates();
+    $('upReview').classList.remove('hidden');
+  } catch (e) {
+    $('upMsg').textContent = e.message && e.message.includes('PDF reader') ? e.message : 'Could not read that PDF.';
+  }
+};
+
+$('upPublish').onclick = async () => {
+  if (!parsed) return;
+  const pin = $('upPin').value.trim();
+  if (!pin) { $('upPin').focus(); return; }
+  $('upPublish').disabled = true;
+  $('upMsg').textContent = 'Publishing…';
+  try {
+    const r = await fetch(SETS_API, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ pin, subject: $('upSubject').value, set: +$('upSet').value, title: parsed.title, questions: freshQuestions() })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Upload failed. Publishing only works on the live site.');
+    uploaded.push(data.set);
+    setupSets();
+    renderUploadedList();
+    resetUpload(`Published ${data.set.questions.length} questions as ${subjectOf(data.set.subject).name} Set ${data.set.set}. Everyone can play it now.`);
+  } catch (e) {
+    $('upMsg').textContent = e.message;
+    $('upPublish').disabled = false;
+  }
+};
+
+$('upLocal').onclick = () => {
+  if (!parsed) return;
+  const subject = $('upSubject').value, set = Math.max(1, +$('upSet').value || 1);
+  const qs = freshQuestions();
+  qs.forEach((q, i) => custom.push({ id: Date.now() + '-' + i, subject, set, ...q }));
+  saveCustom();
+  setupSets();
+  renderMyList();
+  resetUpload(`Saved ${qs.length} questions as ${subjectOf(subject).name} Set ${set} in this browser.`);
+};
+
+$('upList').onclick = async e => {
+  const id = e.target.dataset.delset;
+  if (!id) return;
+  const pin = $('upPin').value.trim() || prompt('Upload PIN:') || '';
+  if (!pin || !confirm('Delete this set for everyone?')) return;
+  try {
+    const r = await fetch(`${SETS_API}?id=${encodeURIComponent(id)}`, { method: 'DELETE', headers: { 'x-upload-pin': pin } });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Delete failed.');
+    uploaded = uploaded.filter(s => s.id !== id);
+    setupSets();
+    renderUploadedList();
+  } catch (err) { alert(err.message); }
+};
+
 loadCustom();
 setupSets();
+loadUploadedSets();
