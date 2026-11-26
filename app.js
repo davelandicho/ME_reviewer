@@ -12,6 +12,8 @@ let locked = false;
 let muted = false;
 let used = { fifty: false, hint: false, poll: false };
 let current = null;
+let gameBoard = null;   // leaderboard this game counts for
+let submitted = false;
 
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
@@ -27,8 +29,45 @@ function escapeHtml(s) {
   }[c]));
 }
 
+/* ---------- Sounds ----------
+   Put your meme clips in the sounds/ folder with these names.
+   Add or remove names in the lists; a random "wrong" clip plays each time.
+   If a file is missing, a simple beep plays instead. */
+const SOUND_FILES = {
+  ok: ['sounds/correct.mp3'],
+  no: ['sounds/wrong-1.mp3', 'sounds/wrong-2.mp3', 'sounds/wrong-3.mp3', 'sounds/wrong-4.mp3', 'sounds/wrong-5.mp3']
+};
+const clips = {};
+let playing = null;
+for (const [type, files] of Object.entries(SOUND_FILES)) {
+  clips[type] = files.map(src => {
+    const a = new Audio();
+    a.preload = 'auto';
+    a.onerror = () => { a.missing = true; };
+    a.src = src;
+    return a;
+  });
+}
+
+function stopSound() {
+  if (playing) { playing.pause(); playing.currentTime = 0; playing = null; }
+}
+
 function sound(type) {
   if (muted) return;
+  stopSound();
+  const ready = (clips[type] || []).filter(a => !a.missing);
+  if (ready.length) {
+    const a = ready[Math.floor(Math.random() * ready.length)];
+    a.currentTime = 0;
+    playing = a;
+    a.play().catch(() => { a.missing = true; beep(type); });
+    return;
+  }
+  beep(type);
+}
+
+function beep(type) {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
@@ -47,10 +86,10 @@ function sound(type) {
 /* ---------- Subjects ---------- */
 // key: matches BANKS.<key> in the questions file
 const SUBJECTS = [
-  { key: 'md',         name: 'Machine Design', icon: '⚙️', file: 'questions.js' },
-  { key: 'math',       name: 'Math',           icon: '📐', file: 'questions-math.js' },
-  { key: 'powerplant', name: 'Power Plant',    icon: '🏭', file: 'questions-powerplant.js' },
-  { key: 'pipe',       name: 'Pipe',           icon: '🔧', file: 'questions-pipe.js' }
+  { key: 'md',         name: 'Machine Design', file: 'questions.js' },
+  { key: 'math',       name: 'Math',           file: 'questions-math.js' },
+  { key: 'powerplant', name: 'Power Plant',    file: 'questions-powerplant.js' },
+  { key: 'pipe',       name: 'Pipe',           file: 'questions-pipe.js' }
 ];
 window.BANKS = window.BANKS || {};
 const subjectOf = key => SUBJECTS.find(s => s.key === key) || SUBJECTS[0];
@@ -72,35 +111,58 @@ function saveCustom() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(custom)); } catch (e) { /* storage blocked */ }
 }
 
+function renderSubjectTabs() {
+  const cur = $('subject').value;
+  $('subjectTabs').innerHTML = SUBJECTS.map(s =>
+    `<button type="button" data-sub="${s.key}" aria-pressed="${s.key === cur}">${s.name} ` +
+    `<span class="count">${allQuestions(s.key).length}</span></button>`).join('');
+}
+
 function allQuestions(sub = $('subject').value) {
   return (BANKS[sub] || []).concat(custom.filter(q => q.subject === sub));
 }
 
 function setupSets() {
   const subj = subjectOf($('subject').value);
-  $('subjectChip').textContent = `${subj.icon} ${subj.name}`;
+  $('subjectChip').textContent = subj.name;
+  renderSubjectTabs();
   const all = allQuestions();
   const mine = custom.filter(q => q.subject === subj.key).length;
   $('emptyMsg').classList.toggle('hidden', all.length > 0);
   $('start').disabled = all.length === 0;
   const max = Math.max(1, ...all.map(q => q.set || 1));
-  $('set').innerHTML = Array.from({ length: max }, (_, i) => {
-    const n = all.filter(q => (q.set || 1) === i + 1).length;
-    return n ? `<option value="${i + 1}">Set ${i + 1} (${n} questions)</option>` : '';
-  }).join('');
-  $('footer').textContent = `${subj.name}: ${max} sets • ${all.length} items (${mine} added by you) • Works offline`;
+  const prev = $('mode').value;
+  let opts = `<option value="all">Cover to cover (all ${all.length})</option>`;
+  if (max > 1) {
+    for (let i = 1; i <= max; i++) {
+      const n = all.filter(q => (q.set || 1) === i).length;
+      if (n) opts += `<option value="set${i}">Set ${i} (${n})</option>`;
+    }
+  }
+  $('mode').innerHTML = opts;
+  if ([...$('mode').options].some(o => o.value === prev)) $('mode').value = prev;
+  updateCountVisibility();
+  $('footer').textContent = mine ? `${mine} question${mine > 1 ? 's' : ''} added by you in ${subj.name}` : '';
+}
+
+// Number of questions only matters when playing one set
+function updateCountVisibility() {
+  $('countWrap').classList.toggle('hidden', $('mode').value === 'all');
 }
 
 function startGame() {
-  const source = $('mode').value === 'set'
-    ? allQuestions().filter(q => (q.set || 1) === +$('set').value)
-    : allQuestions();
+  const mode = $('mode').value;
+  const source = mode === 'all'
+    ? allQuestions()
+    : allQuestions().filter(q => (q.set || 1) === +mode.slice(3));
 
   if (!source.length) return;
   pool = shuffle(source.slice());
-  const n = $('count').value === 'all' ? pool.length : +$('count').value;
+  const n = mode === 'all' || $('count').value === 'all' ? pool.length : +$('count').value;
   pool = pool.slice(0, Math.min(n, pool.length));
 
+  gameBoard = currentBoard();
+  submitted = false;
   idx = 0;
   score = correct = wrong = streak = best = 0;
   used = { fifty: false, hint: false, poll: false };
@@ -122,6 +184,7 @@ function render() {
   current = pool[idx];
 
   $('feedback').textContent = '';
+  $('feedback').className = 'feedback';
   $('explain').classList.add('hidden');
   $('lifeline').textContent = '';
   $('advanceTip').textContent = '';
@@ -161,15 +224,17 @@ function answer(i, btn) {
     best = Math.max(best, streak);
     const bonus = streak >= 3 ? Math.min((streak - 2) * 25, 200) : 0;
     score += 100 + bonus;
-    btn.classList.add('correct', 'pop');
-    $('feedback').textContent = 'AYUS TOPNOTCHER! 🎉🔥' + (bonus ? ` +${bonus} STREAK BONUS!` : '');
+    btn.classList.add('correct');
+    $('feedback').textContent = 'Ayus, topnotcher!' + (bonus ? `  +${bonus} streak bonus` : '');
+    $('feedback').className = 'feedback ok';
     sound('ok');
   } else {
     wrong++;
     streak = 0;
     btn.classList.add('wrong', 'shake');
     btns[correctIdx].classList.add('correct');
-    $('feedback').textContent = 'BUBU KA INAMO 😭';
+    $('feedback').textContent = 'Bubu ka inamo.';
+    $('feedback').className = 'feedback no';
     sound('no');
   }
 
@@ -180,11 +245,11 @@ function answer(i, btn) {
 
   updateHud();
   $('explain').innerHTML =
-    `<b>Correct answer:</b> ${escapeHtml(current.choices[current.correct])}<br>` +
+    `<b>Answer:</b> ${escapeHtml(current.choices[current.correct])}<br>` +
     `<b>Keyword:</b> ${escapeHtml(current.keyword)}` +
     (current.explain ? `<br><span class="small">${escapeHtml(current.explain)}</span>` : '');
   $('explain').classList.remove('hidden');
-  $('advanceTip').textContent = 'Tap NEXT, press Enter / Space, or tap outside the answers to continue';
+  $('advanceTip').textContent = 'Enter / Space, or tap anywhere outside the answers, also works.';
   $('next').classList.remove('hidden');
   $('bar').style.width = ((idx + 1) / pool.length * 100) + '%';
 }
@@ -199,7 +264,7 @@ function advance() {
 function finish() {
   $('game').classList.add('hidden');
   $('result').classList.remove('hidden');
-  $('finalScore').textContent = score + ' pts';
+  $('finalScore').textContent = score.toLocaleString();
 
   const acc = pool.length ? Math.round(correct / pool.length * 100) : 0;
   $('stats').innerHTML = `
@@ -209,10 +274,18 @@ function finish() {
     <div class="stat"><b>${best}</b><span>Best streak</span></div>`;
 
   $('rating').textContent =
-    acc >= 90 ? '👑 BOARD EXAM MATERIAL!' :
-    acc >= 75 ? '🔥 AYUS, MAY PAG-ASA!' :
-    acc >= 50 ? '🛠️ ENGINEER IN PROGRESS!' :
-                '😭 REVIEW PA, INA MO!';
+    acc >= 90 ? 'Board exam material.' :
+    acc >= 75 ? 'Ayus, may pag-asa.' :
+    acc >= 50 ? 'Engineer in progress.' :
+                'Review pa, ina mo.';
+
+  const name = playerName();
+  $('saveMsg').textContent = '';
+  $('saveName').value = name;
+  $('saveWrap').classList.toggle('hidden', !!name);
+  $('resultBoardTitle').textContent = boardLabel(gameBoard);
+  if (name) submitScore(name);
+  else loadBoard(gameBoard, 'resultBoard');
 }
 
 /* ---------- Events ---------- */
@@ -220,12 +293,19 @@ $('subject').onchange = () => {
   try { localStorage.setItem('mdReviewerSubject', $('subject').value); } catch (e) {}
   setupSets();
 };
-$('mode').onchange = () => $('setWrap').classList.toggle('hidden', $('mode').value !== 'set');
+$('mode').onchange = updateCountVisibility;
 $('start').onclick = startGame;
 $('next').onclick = advance;
 $('again').onclick = () => {
   $('result').classList.add('hidden');
   $('setup').classList.remove('hidden');
+  setupSets();
+};
+$('subjectTabs').onclick = e => {
+  const b = e.target.closest('button[data-sub]');
+  if (!b) return;
+  $('subject').value = b.dataset.sub;
+  $('subject').onchange();
 };
 
 $('game').addEventListener('click', e => {
@@ -243,14 +323,14 @@ $('fifty').onclick = () => {
     b.disabled = true;
     b.classList.add('dim');
   });
-  $('lifeline').textContent = '✂️ Two incorrect choices removed!';
+  $('lifeline').textContent = 'Two wrong choices removed.';
   $('fifty').disabled = true;
 };
 
 $('hint').onclick = () => {
   if (used.hint || locked) return;
   used.hint = true;
-  $('lifeline').textContent = '💡 Hint: ' + current.keyword;
+  $('lifeline').textContent = 'Hint: ' + current.keyword;
   $('hint').disabled = true;
 };
 
@@ -261,14 +341,14 @@ $('poll').onclick = () => {
   const weights = current.display.map(() => Math.random() * 25 + 3);
   weights[correctIdx] += Math.random() * 30;
   const total = weights.reduce((a, b) => a + b, 0);
-  $('lifeline').textContent = '📊 Audience poll (simulated, may be wrong): ' +
-    weights.map((w, i) => `${LETTERS[i]} ${Math.round(w / total * 100)}%`).join(' • ');
+  $('lifeline').textContent = 'Audience poll (simulated, can be wrong): ' +
+    weights.map((w, i) => `${LETTERS[i]} ${Math.round(w / total * 100)}%`).join(' · ');
   $('poll').disabled = true;
 };
 
 $('mute').onclick = () => {
   muted = !muted;
-  $('mute').textContent = muted ? '🔇 Muted' : '🔊 Sound';
+  $('mute').textContent = muted ? 'Sound off' : 'Sound on';
 };
 
 document.addEventListener('keydown', e => {
@@ -286,13 +366,13 @@ function renderMyList() {
     <div class="my-item">
       <div>
         <div>${escapeHtml(q.q)}</div>
-        <div class="meta">${subjectOf(q.subject).icon} ${subjectOf(q.subject).name} • Set ${q.set} • ✅ ${escapeHtml(q.choices[q.correct])}</div>
+        <div class="meta">${subjectOf(q.subject).name} · Set ${q.set} · Answer: ${escapeHtml(q.choices[q.correct])}</div>
       </div>
       <div class="acts">
-        <button class="btn cyan" data-edit="${q.id}">Edit</button>
-        <button class="btn pink" data-del="${q.id}">Delete</button>
+        <button class="btn small" data-edit="${q.id}">Edit</button>
+        <button class="btn small danger" data-del="${q.id}">Delete</button>
       </div>
-    </div>`).join('') : '<p class="small">Wala pa. Add your first question above!</p>';
+    </div>`).join('') : '<p class="small">None yet.</p>';
 }
 
 function resetForm() {
@@ -300,7 +380,7 @@ function resetForm() {
   $('qForm').reset();
   $('fSubject').value = sub;
   $('editId').value = '';
-  $('saveQ').textContent = 'SAVE QUESTION 💾';
+  $('saveQ').textContent = 'Save question';
   $('cancelEdit').classList.add('hidden');
 }
 
@@ -331,7 +411,7 @@ $('qForm').onsubmit = e => {
   };
   if (!q.q || choices.some(c => !c)) return;
   if (new Set(choices.map(c => c.toLowerCase())).size < 4) {
-    $('formMsg').textContent = '⚠️ The 4 choices must be different.';
+    $('formMsg').textContent = 'The 4 choices must all be different.';
     return;
   }
   const i = custom.findIndex(x => x.id === q.id);
@@ -340,7 +420,7 @@ $('qForm').onsubmit = e => {
   const lastSet = q.set;
   resetForm();
   $('fSet').value = lastSet;
-  $('formMsg').textContent = i >= 0 ? '✏️ Question updated!' : '✅ Question added!';
+  $('formMsg').textContent = i >= 0 ? 'Question updated.' : 'Question added.';
   renderMyList();
   $('fQ').focus();
 };
@@ -361,7 +441,7 @@ $('myList').onclick = e => {
     $('fKey').value = q.keyword;
     document.querySelectorAll('.fChoice').forEach((inp, i) => { inp.value = q.choices[i]; });
     document.querySelector(`input[name=fCorrect][value="${q.correct}"]`).checked = true;
-    $('saveQ').textContent = 'UPDATE QUESTION ✏️';
+    $('saveQ').textContent = 'Update question';
     $('cancelEdit').classList.remove('hidden');
     $('formMsg').textContent = '';
     $('qForm').scrollIntoView({ behavior: 'smooth' });
@@ -408,19 +488,107 @@ $('importFile').onchange = async () => {
     });
     saveCustom();
     renderMyList();
-    $('formMsg').textContent = `⬆️ Imported ${added} new question(s).`;
+    $('formMsg').textContent = `Imported ${added} new question(s).`;
   } catch (err) {
-    $('formMsg').textContent = '⚠️ Could not read that file.';
+    $('formMsg').textContent = 'Could not read that file.';
   }
   $('importFile').value = '';
 };
 
-const subjectOptions = SUBJECTS.map(s => `<option value="${s.key}">${s.icon} ${s.name}</option>`).join('');
+const subjectOptions = SUBJECTS.map(s => `<option value="${s.key}">${s.name}</option>`).join('');
 ['subject', 'fSubject', 'exSubject'].forEach(id => { $(id).innerHTML = subjectOptions; });
 try {
   const saved = localStorage.getItem('mdReviewerSubject');
   if (SUBJECTS.some(s => s.key === saved)) $('subject').value = saved;
 } catch (e) {}
+
+/* ---------- Leaderboard (Netlify Function: /api/leaderboard) ---------- */
+const API = '/api/leaderboard';
+const NAME_KEY = 'mdReviewerName';
+
+function playerName() { return $('playerName').value.trim().slice(0, 20); }
+
+// One board per subject + set + question count, so scores are comparable
+function currentBoard() {
+  const scope = $('mode').value;
+  return `${$('subject').value}|${scope}|${scope === 'all' ? 'all' : $('count').value}`;
+}
+
+function boardLabel(key) {
+  const [sub, scope, count] = key.split('|');
+  return [subjectOf(sub).name,
+          scope === 'all' ? 'Cover to cover' : 'Set ' + scope.slice(3),
+          ...(scope === 'all' ? [] : [count === 'all' ? 'All questions' : count + ' questions'])].join(' · ');
+}
+
+function drawBoard(listId, entries, myId) {
+  $(listId).innerHTML = entries.length ? entries.map((e, i) => `
+    <li class="${e.id === myId ? 'me' : ''}">
+      <span class="rank">${i + 1}</span>
+      <span class="name">${escapeHtml(e.name)}</span>
+      <span class="sub">${e.correct}/${e.total}</span>
+      <span class="pts">${Number(e.score).toLocaleString()}</span>
+    </li>`).join('') : '<li class="empty">No scores yet. Be the first.</li>';
+}
+
+function boardError(listId) {
+  $(listId).innerHTML = '<li class="empty">Leaderboard is only available on the live (Netlify) site.</li>';
+}
+
+async function loadBoard(key, listId, myId) {
+  $(listId).innerHTML = '<li class="empty">Loading…</li>';
+  try {
+    const r = await fetch(`${API}?board=${encodeURIComponent(key)}`);
+    if (!r.ok) throw new Error(r.status);
+    drawBoard(listId, (await r.json()).entries, myId);
+  } catch (e) { boardError(listId); }
+}
+
+async function submitScore(name) {
+  if (submitted) return;
+  submitted = true;
+  $('saveWrap').classList.add('hidden');
+  $('saveMsg').textContent = 'Saving score…';
+  try {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ board: gameBoard, name, score, correct, total: pool.length, best })
+    });
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    $('saveMsg').textContent = `${name}, you placed #${data.rank}.`;
+    drawBoard('resultBoard', data.entries, data.id);
+  } catch (e) {
+    submitted = false;
+    $('saveMsg').textContent = 'Could not save your score.';
+    boardError('resultBoard');
+  }
+}
+
+$('playerName').oninput = () => {
+  try { localStorage.setItem(NAME_KEY, playerName()); } catch (e) {}
+};
+$('saveScore').onclick = () => {
+  const name = $('saveName').value.trim().slice(0, 20);
+  if (!name) { $('saveName').focus(); return; }
+  $('playerName').value = name;
+  $('playerName').oninput();
+  submitScore(name);
+};
+$('saveName').onkeydown = e => { if (e.key === 'Enter') $('saveScore').click(); };
+$('openBoard').onclick = () => {
+  $('setup').classList.add('hidden');
+  $('boardPanel').classList.remove('hidden');
+  $('boardTitle').textContent = boardLabel(currentBoard());
+  loadBoard(currentBoard(), 'boardList');
+};
+$('closeBoard').onclick = () => {
+  $('boardPanel').classList.add('hidden');
+  $('setup').classList.remove('hidden');
+};
+
+try { $('playerName').value = localStorage.getItem(NAME_KEY) || ''; } catch (e) {}
 
 loadCustom();
 setupSets();

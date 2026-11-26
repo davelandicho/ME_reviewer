@@ -8,71 +8,91 @@
 </head>
 <body>
 <main>
-  <header class="hero">
-    <div class="logo-chip" id="subjectChip">⚙️ Machine Design</div>
-    <h1>MD NG INA MO</h1>
-    <p class="tagline">wag hayaan gaguhin ng md terms ✨</p>
+  <header class="top">
+    <div>
+      <h1>MD NG INA MO</h1>
+      <p class="tagline">wag hayaan gaguhin ng md terms</p>
+    </div>
+    <span class="subject-label" id="subjectChip">Machine Design</span>
   </header>
 
+  <!-- ---------- Setup ---------- -->
   <section id="setup" class="panel">
-    <h2>🎮 Ready ka na ba, future engineer?</h2>
-
     <div class="field">
-      <label for="subject">Subject</label>
-      <select id="subject"></select>
+      <label for="playerName">Your name</label>
+      <input id="playerName" maxlength="20" autocomplete="nickname" placeholder="Nickname for the leaderboard">
     </div>
 
     <div class="field">
-      <label for="mode">Game mode</label>
-      <select id="mode">
-        <option value="all">Cover to Cover — every set</option>
-        <option value="set">Per Set — pick one</option>
-      </select>
+      <span class="label">Subject</span>
+      <div class="seg" id="subjectTabs" role="group" aria-label="Subject"></div>
+      <select id="subject" class="hidden" aria-hidden="true" tabindex="-1"></select>
     </div>
 
-    <div id="setWrap" class="field hidden">
-      <label for="set">Select set</label>
-      <select id="set"></select>
+    <div class="row">
+      <div class="field">
+        <label for="mode">Mode</label>
+        <select id="mode"></select>
+      </div>
+      <div id="countWrap" class="field hidden">
+        <label for="count">Questions</label>
+        <select id="count">
+          <option>10</option>
+          <option selected>20</option>
+          <option>30</option>
+          <option>50</option>
+          <option>100</option>
+          <option value="all">All</option>
+        </select>
+      </div>
     </div>
 
-    <div class="field">
-      <label for="count">How many questions?</label>
-      <select id="count">
-        <option>10</option>
-        <option>20</option>
-        <option>30</option>
-        <option>50</option>
-        <option>100</option>
-        <option value="all">All questions</option>
-      </select>
-    </div>
+    <p id="emptyMsg" class="note warn hidden">No questions in this subject yet. Add some under “Manage questions”.</p>
 
-    <p id="emptyMsg" class="small hidden">⚠️ No questions in this subject yet. Add some with the ➕ button below.</p>
-    <p class="small">Questions and choices shuffle every game. Lifelines are one-use. Streaks earn bonus points.</p>
-    <button id="start" class="btn green big">START GAME 🚀</button>
-    <button id="openManage" class="btn cyan big">➕ ADD / MANAGE QUESTIONS</button>
+    <div class="actions">
+      <button id="start" class="btn primary big">Start game</button>
+      <button id="openBoard" class="btn big">Leaderboard</button>
+    </div>
+    <p class="small">Questions and choices are shuffled every game. Each lifeline works once. Three or more correct in a row gives bonus points.</p>
+    <button id="openManage" class="link">Manage questions</button>
   </section>
 
+  <!-- ---------- Leaderboard ---------- -->
+  <section id="boardPanel" class="panel hidden">
+    <div class="panel-head">
+      <h2>Leaderboard</h2>
+      <button id="closeBoard" class="link">Back</button>
+    </div>
+    <p class="small" id="boardTitle"></p>
+    <ol id="boardList" class="board"></ol>
+  </section>
+
+  <!-- ---------- Question manager ---------- -->
   <section id="manage" class="panel hidden">
-    <h2>📝 Add a Question</h2>
-    <p class="small">Questions you add here are saved in this browser and mixed into the game right away.</p>
+    <div class="panel-head">
+      <h2>Add a question</h2>
+      <button id="closeManage" class="link">Back</button>
+    </div>
+    <p class="small">Saved in this browser only, and added to the game right away.</p>
 
     <form id="qForm">
       <input type="hidden" id="editId">
-      <div class="field">
-        <label for="fSubject">Subject</label>
-        <select id="fSubject"></select>
-      </div>
-      <div class="field">
-        <label for="fSet">Set number</label>
-        <input id="fSet" type="number" min="1" value="1" required>
+      <div class="row">
+        <div class="field">
+          <label for="fSubject">Subject</label>
+          <select id="fSubject"></select>
+        </div>
+        <div class="field narrow">
+          <label for="fSet">Set</label>
+          <input id="fSet" type="number" min="1" value="1" required>
+        </div>
       </div>
       <div class="field">
         <label for="fQ">Question</label>
-        <textarea id="fQ" rows="3" required placeholder="Type the question..."></textarea>
+        <textarea id="fQ" rows="3" required></textarea>
       </div>
       <div class="field">
-        <label>Choices — tick the correct one</label>
+        <span class="label">Choices (select the correct one)</span>
         <div class="choice-row"><input type="radio" name="fCorrect" value="0" checked aria-label="A is correct"><span class="letter">A</span><input class="fChoice" required></div>
         <div class="choice-row"><input type="radio" name="fCorrect" value="1" aria-label="B is correct"><span class="letter">B</span><input class="fChoice" required></div>
         <div class="choice-row"><input type="radio" name="fCorrect" value="2" aria-label="C is correct"><span class="letter">C</span><input class="fChoice" required></div>
@@ -80,33 +100,35 @@
       </div>
       <div class="field">
         <label for="fKey">Keyword / hint</label>
-        <input id="fKey" placeholder="Short memory trick or explanation">
+        <input id="fKey">
       </div>
-      <button type="submit" id="saveQ" class="btn green big">SAVE QUESTION 💾</button>
-      <button type="button" id="cancelEdit" class="btn pink big hidden">CANCEL EDIT</button>
-      <p id="formMsg" class="center small"></p>
+      <div class="actions">
+        <button type="submit" id="saveQ" class="btn primary">Save question</button>
+        <button type="button" id="cancelEdit" class="btn hidden">Cancel edit</button>
+      </div>
+      <p id="formMsg" class="small"></p>
     </form>
 
-    <h2 style="margin-top:24px">📚 My added questions (<span id="myCount">0</span>)</h2>
+    <h3>Your questions (<span id="myCount">0</span>)</h3>
     <div id="myList" class="my-list"></div>
 
-    <div class="tools" style="margin-top:14px">
-      <select id="exSubject" aria-label="Subject to download" style="flex:1 1 160px"></select>
-      <button class="btn" id="exportQ">⬇️ Download file</button>
-      <button class="btn cyan" id="importBtn">⬆️ Import</button>
+    <h3>Share with everyone</h3>
+    <div class="actions">
+      <select id="exSubject" aria-label="Subject to download"></select>
+      <button class="btn" id="exportQ">Download file</button>
+      <button class="btn" id="importBtn">Import file</button>
       <input type="file" id="importFile" accept=".js,.json" class="hidden">
     </div>
-    <p class="small">To make your added questions show for <b>everyone</b> on the website: pick the subject, click Download, replace the file with the same name in your project folder (e.g. <code>questions-math.js</code>), then redeploy.</p>
-
-    <button id="closeManage" class="btn green big">⬅️ BACK TO GAME</button>
+    <p class="small">Download the subject’s file, replace the file with the same name in the project folder (e.g. <code>questions-math.js</code>), then push to GitHub.</p>
   </section>
 
+  <!-- ---------- Game ---------- -->
   <section id="game" class="panel hidden">
     <div class="hud">
-      <span class="badge" id="qnum">Question</span>
-      <span class="badge">🏆 <span id="score">0</span></span>
-      <span class="badge">🔥 <span id="streak">0</span> · Best <span id="best">0</span></span>
-      <button class="btn pink small-btn" id="mute">🔊 Sound</button>
+      <span id="qnum">Question</span>
+      <span>Score <b id="score">0</b></span>
+      <span>Streak <b id="streak">0</b> <span class="muted">/ best <span id="best">0</span></span></span>
+      <button class="link" id="mute">Sound on</button>
     </div>
     <div class="progress"><div id="bar"></div></div>
 
@@ -114,24 +136,41 @@
     <div id="answers" class="answers"></div>
 
     <div class="tools">
-      <button class="btn cyan" id="fifty">50:50 ✂️</button>
-      <button class="btn cyan" id="hint">Hint 💡</button>
-      <button class="btn cyan" id="poll">Audience Poll 📊</button>
+      <button class="btn lifeline-btn" id="fifty">50:50</button>
+      <button class="btn lifeline-btn" id="hint">Hint</button>
+      <button class="btn lifeline-btn" id="poll">Audience poll</button>
     </div>
     <div id="lifeline" class="lifeline"></div>
 
     <div id="feedback" class="feedback"></div>
     <div id="explain" class="keyword hidden"></div>
-    <p class="center small" id="advanceTip"></p>
-    <button id="next" class="btn green big hidden">NEXT QUESTION ⏭️</button>
+    <button id="next" class="btn primary big hidden">Next question</button>
+    <p class="small center" id="advanceTip"></p>
   </section>
 
-  <section id="result" class="panel hidden center">
-    <h2>🏁 GAME OVER!</h2>
-    <div class="bigscore" id="finalScore"></div>
+  <!-- ---------- Result ---------- -->
+  <section id="result" class="panel hidden">
+    <p class="small center">Final score</p>
+    <div class="bigscore center" id="finalScore"></div>
+    <p class="rating center" id="rating"></p>
     <div id="stats" class="stats"></div>
-    <h2 id="rating"></h2>
-    <button id="again" class="btn green big">PLAY AGAIN 🔄</button>
+
+    <div id="saveWrap" class="save hidden">
+      <label for="saveName">Add your name to the leaderboard</label>
+      <div class="actions">
+        <input id="saveName" maxlength="20" placeholder="Nickname">
+        <button id="saveScore" class="btn primary">Save score</button>
+      </div>
+    </div>
+    <p id="saveMsg" class="small center"></p>
+
+    <h3>Leaderboard</h3>
+    <p class="small" id="resultBoardTitle"></p>
+    <ol id="resultBoard" class="board"></ol>
+
+    <div class="actions">
+      <button id="again" class="btn primary big">Play again</button>
+    </div>
   </section>
 
   <footer id="footer"></footer>
