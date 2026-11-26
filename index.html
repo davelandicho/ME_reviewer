@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MD NG INA MO</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="logo-chip" id="subjectChip">⚙️ Machine Design</div>
+    <h1>MD NG INA MO</h1>
+    <p class="tagline">wag hayaan gaguhin ng md terms ✨</p>
+  </header>
+
+  <section id="setup" class="panel">
+    <h2>🎮 Ready ka na ba, future engineer?</h2>
+
+    <div class="field">
+      <label for="subject">Subject</label>
+      <select id="subject"></select>
+    </div>
+
+    <div class="field">
+      <label for="mode">Game mode</label>
+      <select id="mode">
+        <option value="all">Cover to Cover — every set</option>
+        <option value="set">Per Set — pick one</option>
+      </select>
+    </div>
+
+    <div id="setWrap" class="field hidden">
+      <label for="set">Select set</label>
+      <select id="set"></select>
+    </div>
+
+    <div class="field">
+      <label for="count">How many questions?</label>
+      <select id="count">
+        <option>10</option>
+        <option>20</option>
+        <option>30</option>
+        <option>50</option>
+        <option>100</option>
+        <option value="all">All questions</option>
+      </select>
+    </div>
+
+    <p id="emptyMsg" class="small hidden">⚠️ No questions in this subject yet. Add some with the ➕ button below.</p>
+    <p class="small">Questions and choices shuffle every game. Lifelines are one-use. Streaks earn bonus points.</p>
+    <button id="start" class="btn green big">START GAME 🚀</button>
+    <button id="openManage" class="btn cyan big">➕ ADD / MANAGE QUESTIONS</button>
+  </section>
+
+  <section id="manage" class="panel hidden">
+    <h2>📝 Add a Question</h2>
+    <p class="small">Questions you add here are saved in this browser and mixed into the game right away.</p>
+
+    <form id="qForm">
+      <input type="hidden" id="editId">
+      <div class="field">
+        <label for="fSubject">Subject</label>
+        <select id="fSubject"></select>
+      </div>
+      <div class="field">
+        <label for="fSet">Set number</label>
+        <input id="fSet" type="number" min="1" value="1" required>
+      </div>
+      <div class="field">
+        <label for="fQ">Question</label>
+        <textarea id="fQ" rows="3" required placeholder="Type the question..."></textarea>
+      </div>
+      <div class="field">
+        <label>Choices — tick the correct one</label>
+        <div class="choice-row"><input type="radio" name="fCorrect" value="0" checked aria-label="A is correct"><span class="letter">A</span><input class="fChoice" required></div>
+        <div class="choice-row"><input type="radio" name="fCorrect" value="1" aria-label="B is correct"><span class="letter">B</span><input class="fChoice" required></div>
+        <div class="choice-row"><input type="radio" name="fCorrect" value="2" aria-label="C is correct"><span class="letter">C</span><input class="fChoice" required></div>
+        <div class="choice-row"><input type="radio" name="fCorrect" value="3" aria-label="D is correct"><span class="letter">D</span><input class="fChoice" required></div>
+      </div>
+      <div class="field">
+        <label for="fKey">Keyword / hint</label>
+        <input id="fKey" placeholder="Short memory trick or explanation">
+      </div>
+      <button type="submit" id="saveQ" class="btn green big">SAVE QUESTION 💾</button>
+      <button type="button" id="cancelEdit" class="btn pink big hidden">CANCEL EDIT</button>
+      <p id="formMsg" class="center small"></p>
+    </form>
+
+    <h2 style="margin-top:24px">📚 My added questions (<span id="myCount">0</span>)</h2>
+    <div id="myList" class="my-list"></div>
+
+    <div class="tools" style="margin-top:14px">
+      <select id="exSubject" aria-label="Subject to download" style="flex:1 1 160px"></select>
+      <button class="btn" id="exportQ">⬇️ Download file</button>
+      <button class="btn cyan" id="importBtn">⬆️ Import</button>
+      <input type="file" id="importFile" accept=".js,.json" class="hidden">
+    </div>
+    <p class="small">To make your added questions show for <b>everyone</b> on the website: pick the subject, click Download, replace the file with the same name in your project folder (e.g. <code>questions-math.js</code>), then redeploy.</p>
+
+    <button id="closeManage" class="btn green big">⬅️ BACK TO GAME</button>
+  </section>
+
+  <section id="game" class="panel hidden">
+    <div class="hud">
+      <span class="badge" id="qnum">Question</span>
+      <span class="badge">🏆 <span id="score">0</span></span>
+      <span class="badge">🔥 <span id="streak">0</span> · Best <span id="best">0</span></span>
+      <button class="btn pink small-btn" id="mute">🔊 Sound</button>
+    </div>
+    <div class="progress"><div id="bar"></div></div>
+
+    <div id="question" class="q"></div>
+    <div id="answers" class="answers"></div>
+
+    <div class="tools">
+      <button class="btn cyan" id="fifty">50:50 ✂️</button>
+      <button class="btn cyan" id="hint">Hint 💡</button>
+      <button class="btn cyan" id="poll">Audience Poll 📊</button>
+    </div>
+    <div id="lifeline" class="lifeline"></div>
+
+    <div id="feedback" class="feedback"></div>
+    <div id="explain" class="keyword hidden"></div>
+    <p class="center small" id="advanceTip"></p>
+    <button id="next" class="btn green big hidden">NEXT QUESTION ⏭️</button>
+  </section>
+
+  <section id="result" class="panel hidden center">
+    <h2>🏁 GAME OVER!</h2>
+    <div class="bigscore" id="finalScore"></div>
+    <div id="stats" class="stats"></div>
+    <h2 id="rating"></h2>
+    <button id="again" class="btn green big">PLAY AGAIN 🔄</button>
+  </section>
+
+  <footer id="footer"></footer>
+</main>
+
+<script src="questions.js"></script>
+<script src="questions-math.js"></script>
+<script src="questions-powerplant.js"></script>
+<script src="questions-pipe.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
