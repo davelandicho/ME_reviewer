@@ -215,11 +215,13 @@ function render() {
     $('answers').appendChild(b);
   });
 
+  disarm();
   for (const k of ['fifty', 'hint', 'poll']) $(k).disabled = used[k];
 }
 
 function answer(i, btn) {
   if (locked) return;
+  disarm();
   locked = true;
 
   const chosen = current.display[i];
@@ -321,7 +323,7 @@ $('game').addEventListener('click', e => {
   if (locked && !e.target.closest('button')) advance();
 });
 
-$('fifty').onclick = () => {
+function useFifty() {
   if (used.fifty || locked) return;
   used.fifty = true;
   const correctIdx = current.display.findIndex(x => x.orig === current.correct);
@@ -333,16 +335,16 @@ $('fifty').onclick = () => {
   });
   $('lifeline').textContent = 'Two wrong choices removed.';
   $('fifty').disabled = true;
-};
+}
 
-$('hint').onclick = () => {
+function useHint() {
   if (used.hint || locked) return;
   used.hint = true;
   $('lifeline').textContent = 'Hint: ' + current.keyword;
   $('hint').disabled = true;
-};
+}
 
-$('poll').onclick = () => {
+function usePoll() {
   if (used.poll || locked) return;
   used.poll = true;
   const correctIdx = current.display.findIndex(x => x.orig === current.correct);
@@ -352,7 +354,34 @@ $('poll').onclick = () => {
   $('lifeline').textContent = 'Audience poll (simulated, can be wrong): ' +
     weights.map((w, i) => `${LETTERS[i]} ${Math.round(w / total * 100)}%`).join(' · ');
   $('poll').disabled = true;
-};
+}
+
+// Lifelines need a second tap within 3s, so a stray touch doesn't waste one.
+const LIFELINES = { fifty: useFifty, hint: useHint, poll: usePoll };
+let armed = null, armTimer = null;
+
+function disarm() {
+  if (!armed) return;
+  const b = $(armed);
+  b.textContent = b.dataset.label;
+  b.classList.remove('armed');
+  armed = null;
+  clearTimeout(armTimer);
+}
+
+for (const [k, use] of Object.entries(LIFELINES)) {
+  const b = $(k);
+  b.dataset.label = b.textContent;
+  b.onclick = () => {
+    if (used[k] || locked) return;
+    if (armed === k) { disarm(); use(); return; }
+    disarm();
+    armed = k;
+    b.textContent = 'Tap again';
+    b.classList.add('armed');
+    armTimer = setTimeout(disarm, 3000);
+  };
+}
 
 $('mute').onclick = () => {
   muted = !muted;

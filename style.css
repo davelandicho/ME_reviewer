@@ -275,8 +275,10 @@ button { font: inherit; }
 .answer.dim { opacity: .25; }
 
 /* ---------- Lifelines ---------- */
-.tools { display: flex; flex-wrap: wrap; gap: 10px; }
-.lifeline-btn { flex: 1 1 130px; padding: 14px 16px; font-size: 1.02rem; }
+.tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.lifeline-btn { min-width: 0; padding: 14px 10px; font-size: 1.02rem; line-height: 1.2; }
+.lifeline-btn.armed { color: #0d1333; background: var(--stripe); border-color: var(--stripe); }
+.lifeline-btn.armed:hover:not(:disabled) { background: var(--stripe); opacity: .9; }
 .lifeline { margin-top: 10px; font-size: .92rem; color: var(--muted); }
 .lifeline:empty { display: none; }
 
@@ -372,6 +374,8 @@ footer { padding: 16px 0 24px; font-size: .8rem; color: var(--muted); text-align
   .panel { padding: 16px; }
   .answers { grid-template-columns: 1fr; }
   .answer { min-height: 56px; }
+  .tools { gap: 8px; }
+  .lifeline-btn { padding: 12px 6px; font-size: .92rem; }
   .q { font-size: 1.1rem; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .stat:nth-child(3) { border-left: 0; }
