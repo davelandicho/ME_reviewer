@@ -360,6 +360,20 @@ button { font: inherit; }
 
 /* PDF upload preview */
 input[type=file] { padding: 8px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
+.dropzone {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 110px; padding: 18px 16px; margin: 0;
+  text-align: center; font-weight: 400; cursor: pointer;
+  border: 2px dashed var(--line); border-radius: var(--radius);
+  background: var(--surface-2, var(--surface));
+  transition: border-color .15s, background-color .15s;
+}
+.dropzone strong { font-size: 1rem; word-break: break-word; }
+.dropzone .small { color: var(--muted); }
+.dropzone:hover, .dropzone:focus-within { border-color: var(--accent); }
+.dropzone.dragover { border-color: var(--accent); border-style: solid; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
 .preview { margin: 4px 0 0; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; }
 .preview summary { cursor: pointer; font-weight: 700; }
 .preview ol { margin: 10px 0 0; padding-left: 22px; max-height: 320px; overflow: auto; font-size: .9rem; }

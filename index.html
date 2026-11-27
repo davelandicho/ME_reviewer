@@ -87,8 +87,12 @@
       </div>
     </div>
     <div class="field">
-      <label for="upFile">PDF file</label>
-      <input id="upFile" type="file" accept="application/pdf,.pdf">
+      <span class="label">PDF file</span>
+      <label id="upDrop" class="dropzone" for="upFile">
+        <input id="upFile" type="file" accept="application/pdf,.pdf" class="visually-hidden">
+        <strong id="upDropText">Drag &amp; drop a PDF here</strong>
+        <span class="small">or click to browse</span>
+      </label>
     </div>
     <p id="upMsg" class="small"></p>
     <div id="upReview" class="hidden">

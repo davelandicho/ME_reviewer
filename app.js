@@ -31,10 +31,10 @@ function escapeHtml(s) {
 
 /* ---------- Sounds ----------
    Put your meme clips in the sounds/ folder with these names.
-   Add or remove names in the lists; a random "wrong" clip plays each time.
-   If a file is missing, a simple beep plays instead. */
+   Add or remove names in the lists; a random clip from the list plays each time.
+   Missing files are skipped; if none are found, a simple beep plays instead. */
 const SOUND_FILES = {
-  ok: ['sounds/correct.mp3'],
+  ok: ['sounds/correct.mp3', 'sounds/correct-1.mp3', 'sounds/correct-2.mp3', 'sounds/correct-3.mp3', 'sounds/correct-4.mp3', 'sounds/correct-5.mp3'],
   no: ['sounds/wrong-1.mp3', 'sounds/wrong-2.mp3', 'sounds/wrong-3.mp3', 'sounds/wrong-4.mp3', 'sounds/wrong-5.mp3']
 };
 const clips = {};
@@ -679,6 +679,7 @@ function freshQuestions() {
 function resetUpload(msg) {
   parsed = null;
   $('upFile').value = '';
+  $('upDropText').textContent = 'Drag & drop a PDF here';
   $('upReview').classList.add('hidden');
   $('upMsg').textContent = msg || '';
   suggestSetNumber();
@@ -686,11 +687,36 @@ function resetUpload(msg) {
 
 $('upSubject').onchange = () => { suggestSetNumber(); markDuplicates(); };
 
-$('upFile').onchange = async () => {
-  const file = $('upFile').files[0];
+// Drag & drop onto the drop zone
+const upDrop = $('upDrop');
+['dragenter', 'dragover'].forEach(ev => upDrop.addEventListener(ev, e => {
+  e.preventDefault();
+  upDrop.classList.add('dragover');
+}));
+['dragleave', 'dragend', 'drop'].forEach(ev => upDrop.addEventListener(ev, e => {
+  if (ev === 'dragleave' && upDrop.contains(e.relatedTarget)) return;
+  upDrop.classList.remove('dragover');
+}));
+upDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = [...(e.dataTransfer?.files || [])][0];
+  if (!file) return;
+  if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
+    $('upMsg').textContent = 'Please drop a PDF file.';
+    return;
+  }
+  handleUploadFile(file);
+});
+// Stop the browser from opening a PDF dropped just outside the zone
+['dragover', 'drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
+
+$('upFile').onchange = () => handleUploadFile($('upFile').files[0]);
+
+async function handleUploadFile(file) {
   $('upReview').classList.add('hidden');
   parsed = null;
   if (!file) return;
+  $('upDropText').textContent = file.name;
   $('upMsg').textContent = 'Reading PDF…';
   try {
     const { questions, warnings } = await ReviewerPdf.parseFile(file);
@@ -707,7 +733,7 @@ $('upFile').onchange = async () => {
   } catch (e) {
     $('upMsg').textContent = e.message && e.message.includes('PDF reader') ? e.message : 'Could not read that PDF.';
   }
-};
+}
 
 $('upPublish').onclick = async () => {
   if (!parsed) return;
