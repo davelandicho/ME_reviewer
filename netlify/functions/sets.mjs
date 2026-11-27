@@ -8,7 +8,7 @@
 import { getStore } from "@netlify/blobs";
 import { randomUUID } from "node:crypto";
 
-const SUBJECTS = ["md", "math", "powerplant", "pipe"];
+const SUBJECTS = ["md", "math", "pipe"];
 const json = (data, status = 200) =>
   Response.json(data, { status, headers: { "cache-control": "no-store" } });
 const str = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");

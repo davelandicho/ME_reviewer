@@ -88,7 +88,6 @@ function beep(type) {
 const SUBJECTS = [
   { key: 'md',         name: 'Machine Design', file: 'questions.js' },
   { key: 'math',       name: 'Math',           file: 'questions-math.js' },
-  { key: 'powerplant', name: 'Power Plant',    file: 'questions-powerplant.js' },
   { key: 'pipe',       name: 'Pipe',           file: 'questions-pipe.js' }
 ];
 window.BANKS = window.BANKS || {};
