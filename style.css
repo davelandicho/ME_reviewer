@@ -137,10 +137,15 @@ select:focus, input:focus, textarea:focus { border-color: var(--accent); }
 textarea { resize: vertical; }
 
 /* Subject picker */
-.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .seg button {
-  flex: 1 1 120px;
-  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 10px 8px;
+  line-height: 1.25;
   font: inherit;
   font-weight: 600;
   color: var(--ink);
@@ -154,7 +159,7 @@ textarea { resize: vertical; }
   background: var(--ink);
   border-color: var(--ink);
 }
-.seg .count { font-weight: 400; opacity: .7; font-size: .85em; }
+.seg .count { margin-top: 2px; font-weight: 400; opacity: .7; font-size: .8em; }
 
 /* ---------- Buttons ---------- */
 button { font: inherit; }
@@ -373,6 +378,7 @@ footer { padding: 16px 0 24px; font-size: .8rem; color: var(--muted); text-align
 @media (max-width: 560px) {
   .panel { padding: 16px; }
   .answers { grid-template-columns: 1fr; }
+  .seg { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 1fr; }
   .answer { min-height: 56px; }
   .tools { gap: 8px; }
   .lifeline-btn { padding: 12px 6px; font-size: .92rem; }
