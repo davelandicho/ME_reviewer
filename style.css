@@ -1,38 +1,42 @@
 :root {
-  --bg: #f3f1ec;
+  /* Alcorcon Engineering Review Center palette (from logo) */
+  --aerc-navy: #010e96;
+  --aerc-blue: #0053c4;
+  --aerc-orange: #ff7300;
+  --aerc-orange-deep: #ff4f00;
+
+  --bg: #f3f5fb;
   --surface: #ffffff;
-  --surface-2: #f7f6f2;
-  --line: #dcd8ce;
-  --ink: #1c1b19;
-  --muted: #6b675e;
-  --accent: #1f4fd1;
+  --surface-2: #eef1f9;
+  --line: #d5dbeb;
+  --ink: #0d1333;
+  --muted: #5a6285;
+  --accent: var(--aerc-blue);
+  --brand: var(--aerc-navy);
+  --brand-ink: #ffffff;
+  --stripe: var(--aerc-orange);
   --good: #1e8a4c;
   --bad: #c8372d;
-  --warn-bg: #fff4d6;
-
-  /* answer tiles */
-  --t0: #d23c34;
-  --t1: #2a62c9;
-  --t2: #e0a00d;
-  --t3: #2b8a4b;
-  --t-ink: #ffffff;
-  --t2-ink: #1c1b19;
+  --warn-bg: #fff1e3;
 
   --radius: 10px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #141413;
-    --surface: #1d1c1a;
-    --surface-2: #262521;
-    --line: #36342f;
-    --ink: #ecebe6;
-    --muted: #a19d93;
-    --accent: #7ea3ff;
+    --bg: #0a0e26;
+    --surface: #111737;
+    --surface-2: #1a2148;
+    --line: #2b3468;
+    --ink: #e9ecf8;
+    --muted: #9ea6c9;
+    --accent: #84a9ff;
+    --brand: #ff8a26;
+    --brand-ink: #0a0e26;
+    --stripe: #ff8a26;
     --good: #4cc27d;
     --bad: #f0675d;
-    --warn-bg: #3a3220;
+    --warn-bg: #3a2a18;
   }
 }
 
@@ -56,7 +60,7 @@ main { max-width: 720px; margin: 0 auto; padding: 24px 16px 8px; }
   gap: 12px;
   flex-wrap: wrap;
   padding: 8px 0 16px;
-  border-bottom: 2px solid var(--ink);
+  border-bottom: 1px solid var(--line);
 }
 
 h1 {
@@ -160,13 +164,13 @@ button { font: inherit; }
   font-weight: 700;
   color: var(--ink);
   background: var(--surface);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--line);
   border-radius: 8px;
   cursor: pointer;
 }
 .btn:hover:not(:disabled) { background: var(--surface-2); }
 .btn:disabled { opacity: .4; cursor: not-allowed; }
-.btn.primary { color: var(--bg); background: var(--ink); }
+.btn.primary { color: var(--bg); background: var(--ink); border-color: var(--ink); }
 .btn.primary:hover:not(:disabled) { background: var(--ink); opacity: .88; }
 .btn.danger { color: var(--bad); border-color: var(--bad); }
 .btn.big { flex: 1 1 180px; padding: 13px 16px; font-size: 1.02rem; }
@@ -207,7 +211,7 @@ button { font: inherit; }
   border-radius: 2px;
   overflow: hidden;
 }
-.progress > div { width: 0; height: 100%; background: var(--ink); transition: width .3s; }
+.progress > div { width: 0; height: 100%; background: var(--stripe); transition: width .3s; }
 
 /* ---------- Question & answers ---------- */
 .q {
@@ -233,17 +237,14 @@ button { font: inherit; }
   padding: 12px 40px 12px 12px;
   text-align: left;
   font-weight: 600;
-  color: var(--t-ink);
-  border: 0;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 8px;
   cursor: pointer;
-  transition: opacity .15s, transform .1s;
+  transition: opacity .15s, border-color .15s, transform .1s;
 }
-.answer:nth-child(1) { background: var(--t0); }
-.answer:nth-child(2) { background: var(--t1); }
-.answer:nth-child(3) { background: var(--t2); color: var(--t2-ink); }
-.answer:nth-child(4) { background: var(--t3); }
-.answer:hover:not(:disabled) { transform: translateY(-1px); }
+.answer:hover:not(:disabled) { border-color: var(--brand); transform: translateY(-1px); }
 .answer:active:not(:disabled) { transform: translateY(1px); }
 .answer:disabled { cursor: default; }
 
@@ -256,9 +257,10 @@ button { font: inherit; }
   font-weight: 800;
   font-size: .9rem;
   border-radius: 6px;
-  background: rgba(255, 255, 255, .22);
+  color: var(--brand-ink);
+  background: var(--brand);
 }
-.choice-row .letter { background: var(--ink); color: var(--bg); }
+.choice-row .letter { background: var(--brand); color: var(--brand-ink); }
 
 .answer.correct { box-shadow: 0 0 0 3px var(--surface), 0 0 0 6px var(--good); }
 .answer.correct::after, .answer.wrong::after {
@@ -334,7 +336,7 @@ button { font: inherit; }
 
 /* ---------- Question manager ---------- */
 .choice-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.choice-row input[type=radio] { width: 18px; height: 18px; accent-color: var(--ink); flex: none; }
+.choice-row input[type=radio] { width: 18px; height: 18px; accent-color: var(--brand); flex: none; }
 .my-list { display: grid; gap: 8px; }
 .my-item {
   display: flex;
